@@ -148,7 +148,11 @@ fi
 
 # install compass
 status "Installing Compass"
-export GEM_HOME=$build_dir/.gem/ruby/1.9.1
+if [ "$STACK" == "cedar-14" ]; then
+  export GEM_HOME=$cache_dir/ruby/.gem/ruby/2.2.0
+else
+  export GEM_HOME=$cache_dir/ruby/.gem/ruby/1.9.1
+fi
 PATH="$GEM_HOME/bin:$PATH"
 if test -d $cache_dir/ruby/.gem; then
   status "Restoring ruby gems directory from cache"
