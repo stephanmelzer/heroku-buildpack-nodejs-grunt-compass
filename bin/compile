@@ -164,7 +164,7 @@ echo "------> Installing Compass for ruby $ruby_version"
 #   cp -r $cache_dir/ruby/.gem $build_dir
 #   HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
 # else
-  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri --debug -V -u
+  HOME=$build_dir gem install compass --debug -V -u
 # fi
 
 # cache ruby gems compass
@@ -172,10 +172,10 @@ rm -rf $cache_dir/ruby
 mkdir -p $cache_dir/ruby
 
 # If app has a gems directory, cache it.
-if test -d $build_dir/.gem; then
-  status "Caching ruby gems directory for future builds"
-  cp -r $build_dir/.gem $cache_dir/ruby
-fi
+# if test -d $build_dir/.gem; then
+#   status "Caching ruby gems directory for future builds"
+#   cp -r $build_dir/.gem $cache_dir/ruby
+# fi
 
 status "Building runtime environment"
 mkdir -p $build_dir/.profile.d
