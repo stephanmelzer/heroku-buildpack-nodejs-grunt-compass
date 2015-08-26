@@ -11,9 +11,6 @@ env_dir=$3
 
 bp_dir=$(cd $(dirname $0); cd ..; pwd)
 
-# Fix leak
-unset GIT_DIR
-
 # Load some convenience functions like status(), echo(), and indent()
 source $bp_dir/bin/common.sh
 
@@ -58,6 +55,25 @@ PATH=$PATH:$build_dir/vendor/node/bin
 # Run subsequent node/npm commands from the build path
 cd $build_dir
 
+is_gruntfile_present= [ -f $build_dir/grunt.js ] || [ -f $build_dir/Gruntfile.js ] || [ -f $build_dir/Gruntfile.coffee ];
+if $is_gruntfile_present; then
+  status "Found Gruntfile"
+  status "Augmenting package.json with grunt and grunt-cli"
+  # Do this because we want to cache it with other node_modules. Otherwise it will be pruned.
+  # It doesn't matter if grunt and/or grunt-cli is already there
+  awk '{ if ( $0 ~ /"dependencies".*/ ) {
+              printf "%s\n%s\n%s\n", $0, "\"grunt-cli\": \"*\",", "\"grunt\": \"*\",";
+         } else {
+              print $0;
+         }
+    }' package.json > tmp-package.json;
+  cp tmp-package.json package.json;
+  rm tmp-package.json;
+else
+  status "No Gruntfile (grunt.js, Gruntfile.js, Gruntfile.coffee) found"
+fi
+
+
 # If node_modules directory is checked into source control then
 # rebuild any native deps. Otherwise, restore from the build cache.
 if test -d $build_dir/node_modules; then
@@ -78,13 +94,6 @@ elif test -d $cache_dir/node/node_modules; then
 
 fi
 
-# Handle npm's new cert bug
-# http://blog.npmjs.org/post/78085451721/npms-self-signed-certificate-is-no-more
-if [ ! -f "$build_dir/.npmrc" ]; then
-  status "Writing a custom .npmrc to circumvent npm bugs"
-  echo "ca=" > "$build_dir/.npmrc"
-fi
-
 # Scope config var availability only to `npm install`
 (
   if [ -d "$env_dir" ]; then
@@ -92,13 +101,9 @@ fi
     export_env_dir $env_dir
   fi
 
-  # Set NODE_ENV to development to allow download dev dependencies
-
-  export NODE_ENV=development
-
   status "Installing dependencies"
   # Make npm output to STDOUT instead of its default STDERR
-  npm install --userconfig $build_dir/.npmrc 2>&1 | indent
+  npm install --userconfig $build_dir/.npmrc --production 2>&1 | indent
 )
 
 # Persist goodies like node-version in the slug
@@ -141,31 +146,44 @@ if [ ! -e $build_dir/Procfile ]; then
   fi
 fi
 
-# Update the PATH
+# install compass
+status "Installing Compass"
+export GEM_HOME=$build_dir/.gem/ruby/1.9.1
+PATH="$GEM_HOME/bin:$PATH"
+if test -d $cache_dir/ruby/.gem; then
+  status "Restoring ruby gems directory from cache"
+  cp -r $cache_dir/ruby/.gem $build_dir
+  HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
+else
+  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
+fi
+
+# cache ruby gems compass
+rm -rf $cache_dir/ruby
+mkdir -p $cache_dir/ruby
+
+# If app has a gems directory, cache it.
+if test -d $build_dir/.gem; then
+  status "Caching ruby gems directory for future builds"
+  cp -r $build_dir/.gem $cache_dir/ruby
+fi
+
 status "Building runtime environment"
 mkdir -p $build_dir/.profile.d
 echo "export PATH=\"\$HOME/vendor/node/bin:\$HOME/bin:\$HOME/node_modules/.bin:\$PATH\";" > $build_dir/.profile.d/nodejs.sh
+echo "export PATH=\"\$HOME/.gem/ruby/1.9.1/bin:\$PATH\"" > $build_dir/.profile.d/ruby.sh
 
 # Check and run Grunt
 (
-  if [ -f $build_dir/grunt.js ] || [ -f $build_dir/Gruntfile.js ] || [ -f $build_dir/gruntfile.js ] || [ -f $build_dir/Gruntfile.coffee ]; then
+  if $is_gruntfile_present; then
     # get the env vars
     if [ -d "$env_dir" ]; then
       status "Exporting config vars to environment"
       export_env_dir $env_dir
     fi
 
-    # make sure that grunt and grunt-cli are installed locally
-    npm install grunt-cli
-    npm install grunt
-    echo "-----> Found Gruntfile, running grunt heroku:$NODE_ENV task"
+    status "Running grunt heroku:$NODE_ENV task"
     $build_dir/node_modules/.bin/grunt heroku:$NODE_ENV
-
-    status "Pruning dev dependencies"
-    npm prune --production 2>&1 | indent
-
-  else
-    echo "-----> No Gruntfile (grunt.js, Gruntfile.js, gruntfile.js, Gruntfile.coffee) found"
   fi
 )
 
