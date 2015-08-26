@@ -130,6 +130,7 @@ cp -r $build_dir/.heroku $cache_dir/node
 status "Cleaning up node-gyp and npm artifacts"
 rm -rf "$build_dir/.node-gyp"
 rm -rf "$build_dir/.npm"
+# rm -rf "$build_dir/.gem"
 
 # If Procfile is absent, try to create one using `npm start`
 if [ ! -e $build_dir/Procfile ]; then
@@ -148,15 +149,25 @@ fi
 
 # install compass
 status "Installing Compass"
-export GEM_HOME=$build_dir/.gem/ruby/1.9.1
-PATH="$GEM_HOME/bin:$PATH"
-if test -d $cache_dir/ruby/.gem; then
-  status "Restoring ruby gems directory from cache"
-  cp -r $cache_dir/ruby/.gem $build_dir
-  HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
+if [ "$STACK" == "cedar-14" ]; then
+  # export GEM_HOME=$cache_dir/ruby/.gem/ruby/2.2.0
+  export GEM_HOME=$HOME/.gem/ruby/2.2.0
 else
-  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
+  # export GEM_HOME=$cache_dir/ruby/.gem/ruby/1.9.1
+  export GEM_HOME=$HOME/.gem/ruby/1.9.1
 fi
+
+ruby_version=`ruby -v`
+echo "------> Installing Compass for ruby $ruby_version"
+
+PATH="$GEM_HOME/bin:$PATH"
+# if test -d $cache_dir/ruby/.gem; then
+#   status "Restoring ruby gems directory from cache"
+#   cp -r $cache_dir/ruby/.gem $build_dir
+#   HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
+# else
+  HOME=$build_dir gem install compass -u
+# fi
 
 # cache ruby gems compass
 rm -rf $cache_dir/ruby
