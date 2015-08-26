@@ -130,7 +130,6 @@ cp -r $build_dir/.heroku $cache_dir/node
 status "Cleaning up node-gyp and npm artifacts"
 rm -rf "$build_dir/.node-gyp"
 rm -rf "$build_dir/.npm"
-# rm -rf "$build_dir/.gem"
 
 # If Procfile is absent, try to create one using `npm start`
 if [ ! -e $build_dir/Procfile ]; then
@@ -151,15 +150,13 @@ fi
 status "Installing Compass"
 export GEM_HOME=$HOME/.gem/ruby/1.9.1
 PATH="$GEM_HOME/bin:$PATH"
-# if test -d $cache_dir/ruby/.gem; then
-#   status "Restoring ruby gems directory from cache"
-#   cp -r $cache_dir/ruby/.gem $build_dir
-#   HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
-# else
-  # HOME=$build_dir gem install compass -u
+if test -d $cache_dir/ruby/.gem; then
+  status "Restoring ruby gems directory from cache"
+  cp -r $cache_dir/ruby/.gem $build_dir
+  HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
+else
   HOME=$build_dir gem install compass
-  # HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
-# fi
+fi
 
 # cache ruby gems compass
 rm -rf $cache_dir/ruby
