@@ -166,7 +166,8 @@ PATH="$GEM_HOME/bin:$PATH"
 #   cp -r $cache_dir/ruby/.gem $build_dir
 #   HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
 # else
-  HOME=$build_dir gem install compass -u
+  # HOME=$build_dir gem install compass -u
+  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
 # fi
 
 # cache ruby gems compass
